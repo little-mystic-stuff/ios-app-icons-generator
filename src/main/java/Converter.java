@@ -2,7 +2,11 @@ import org.apache.batik.transcoder.TranscoderInput;
 import org.apache.batik.transcoder.TranscoderOutput;
 import org.apache.batik.transcoder.image.PNGTranscoder;
 
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.*;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,9 +19,22 @@ public class Converter {
         PNGTranscoder my_converter = new PNGTranscoder();
         my_converter.addTranscodingHint(PNGTranscoder.KEY_WIDTH, 1f * width);
         my_converter.addTranscodingHint(PNGTranscoder.KEY_HEIGHT, 1f * height);
+        my_converter.addTranscodingHint(PNGTranscoder.KEY_FORCE_TRANSPARENT_WHITE, Boolean.TRUE);
+        my_converter.addTranscodingHint(PNGTranscoder.KEY_BACKGROUND_COLOR, Color.white);
         my_converter.transcode(input_svg_image, output_png_image);
         png_ostream.flush();
         png_ostream.close();
+    }
+
+    public static void removeAlphaChannelFromPng(String filePath) throws IOException {
+        BufferedImage img = ImageIO.read(new URL("file://" + filePath));
+        BufferedImage copy = new BufferedImage(img.getWidth(), img.getHeight(), BufferedImage.TYPE_INT_RGB);
+        Graphics2D g2d = copy.createGraphics();
+        g2d.fillRect(0, 0, copy.getWidth(), copy.getHeight());
+        g2d.drawImage(img, 0, 0, null);
+        File outputFile = new File(filePath);
+        ImageIO.write(copy, "png", outputFile);
+        g2d.dispose();
     }
 
     public static void main (String[] args){
@@ -61,6 +78,13 @@ public class Converter {
                 createImage(inputSvgPath, filePath, icons.get(iconName), icons.get(iconName));
                 System.out.println("File " + filename + " has been created.");
             } catch (Exception e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+            try {
+                removeAlphaChannelFromPng(filePath);
+                System.out.println("Alpha channel in file " + filename + " has been removed.");
+            } catch (Throwable e) {
                 e.printStackTrace();
                 throw new RuntimeException(e);
             }
